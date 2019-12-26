@@ -21,13 +21,14 @@
  // npm i hltv
 
 const { HLTV } = require('hltv')
+
 var stringSimilarity = require('string-similarity')
 
-squadra = "cream"
+squadra = "astralis"
 teamNameThresholdSimilarity = 0.4
 
 
-//get latest news, gli elementi arrivano gia in ordine di punteggio 
+//get team ranking, gli elementi arrivano gia in ordine di punteggio 
 async function getTeamRanking(){
     return new Promise(function (resolve) {
         HLTV.getTeamRanking().then((res) => {
@@ -62,10 +63,13 @@ async function getLatestMatches(){
                 var matchJson = {
                     team1: null,
                     team2: null,
+                    id : null
                 }
                 if(res[i].live == true){
+                    //console.log(res[i])
                     matchJson.team1 = res[i].team1.name
                     matchJson.team2 = res[i].team2.name
+                    matchJson.id = res[i].id
                     //aggiungo la partita all-array
                     matchesArr.push(matchJson)
                     i=i+1
@@ -135,7 +139,7 @@ async function getResultForTeam(teamName){
 }
 
 
-//done
+//Data una squadra controlla se sta giocando. se gioca ritorna id del amtch, altrimenti ritorna id del match di una loro partita recente. se non ce ne sono recenti da errore suppongo
 function getMatchId(teamName){
     return new Promise(function (resolve) {
         HLTV.getMatches().then((res) => {
@@ -154,6 +158,8 @@ function getMatchId(teamName){
                     //squadra trovata
                     //console.log("Squadra trovata " + res[i].team1.name + " or " + res[i].team2.name)
                     //console.log(res[i] )
+                    
+                    console.log(res[i])
                     matchJson.id = res[i].id
                     matchJson.team1 = res[i].team1.name
                     matchJson.team2 = res[i].team2.name
@@ -177,7 +183,8 @@ function getMatchId(teamName){
     });
 }
 
-//recupero il risultato attuale di una partita in corso
+
+//recupero il risultato attuale di una partita in corso dato l'id della partita
 async function getLiveMatch(id){
     return new Promise(function (resolve) {
         var matchJson = {
@@ -187,8 +194,7 @@ async function getLiveMatch(id){
             tScore: null,
         }
         HLTV.connectToScorebot({id : id, 
-        onScoreboardUpdate: (data) => {
-            
+        onScoreboardUpdate: (data) => {   
             //console.log(data)
             matchJson.tScore = data.tTeamScore
             matchJson.ctScore = data.ctTeamScore
@@ -196,9 +202,13 @@ async function getLiveMatch(id){
             matchJson.tTeam = data.terroristTeamName
             return resolve(matchJson);
         }})
+        //console.log(HLTV.connectToScorebot)
     });
+    return 0
   }
 
+  
+//recupera dati di una partita data una squadra
 async function main(){
     
     try {
@@ -237,9 +247,9 @@ async function main(){
         try {
             match = await getLiveMatch(id);
             //mostro il vincitore
-            if(match.ctTeamScore > match.tTeamScore){
+            if(parseInt(match.ctScore) > parseInt(match.tScore)){
                 console.log("Al momento gli " + match.ctTeam + " stanno vincendo " + match.ctScore + " a " + match.tScore + " contro gli " + match.tTeam)
-            }else if(match.ctTeamScore < match.tTeamScore){
+            }else if(parseInt(match.ctScore) < parseInt(match.tScore)){
                 console.log("Al momento gli " + match.tTeam + " stanno vincendo " + match.tScore + " a " + match.ctScore + " contro gli " + match.ctTeam)
             }else{
                 console.log("Al momento gli " + match.tTeam + " stanno pareggiando " + match.tScore + " a " + match.ctScore + " contro gli " + match.ctTeam)
@@ -248,19 +258,50 @@ async function main(){
             console.log("Errore durante il recupero della partita " + error);
         }
     }
-    process.exit()
+    //process.exit()
 }
 //main()
 
+//recupera classifica
 async function main2(){
     try {
         matches = await getTeamRanking();
     } catch (error) {
         console.log("Errore durante la ricerca della squadra : " + error);
     }
+    //console.log(matches)
     matches.forEach(element => {
-        console.log(element.team1 + " vs " + element.team2)
+        console.log(element.teamName )
     });
 }
 
-main2()
+//main2()
+
+
+//recupera partite in corso
+async function main3(){
+    try {
+        matches = await getLatestMatches();
+    } catch (error) {
+        console.log("Errore durante la ricerca della squadra : " + error);
+    }
+    console.log(matches)
+    matches.forEach(element => {
+        console.log(element.teamName )
+    });
+}
+//main3()
+
+//recupera partite finite
+async function main4(){
+    try {
+        matches = await getLatestResults();
+    } catch (error) {
+        console.log("Errore durante la ricerca della squadra : " + error);
+    }
+    //console.log(matches)
+    matches.forEach(element => {
+        console.log(element.team1 + " " + element.team1Result + " - " + element.team2Result + " " + element.team2 )
+    });
+}
+main4()
