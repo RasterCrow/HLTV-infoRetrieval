@@ -7,9 +7,10 @@
  *  *  classifica team
  * 
  * TODO Da aggiungere : 
- *  check ultime notizie (non funge, sono notizie dal forum)
  *  dati giocatori ??
- * 
+ *  eventi attuali, passati e futuri
+ *  data inizio evento per nome
+ *  
  * 
  * 
  */
@@ -26,6 +27,61 @@ var stringSimilarity = require('string-similarity')
 
 squadra = "astralis"
 teamNameThresholdSimilarity = 0.4
+eventName = "katowice"
+
+async function getEvents(nameOfEvent){
+    return new Promise(function (resolve) {
+        HLTV.getEvents().then(res => {
+            var eventsList = []
+            //Per tot mesi a partire dal nostro
+            for(var m=0; m<=10; m++){
+                events = res[m].events
+                //Per ogni evento in quel mese
+                events.forEach(element => {
+                    var eventJson = {
+                        eventName: null,
+                        dateStart: null,
+                        location: null,
+                        prizePool: null
+                    }
+                    //Se non cerco un evento particolare in input salvo tutti gli eventi
+                    if(nameOfEvent==null){
+                        //se hanno un nome ( se esistono in pratica ) li aggiungo
+                        if(element.name!=''){
+                            eventJson.eventName = element.name
+                            eventJson.prizePool = element.prizePool
+                            eventJson.location = element.location
+                            //convert from unix to time and get local start time of match
+                            var date = new Date(element.dateStart);
+                            var day = date.getDate();
+                            var month = date.getMonth();
+                            var year = date.getFullYear();
+                            var formattedTime = day + '/' + month + '/' + year
+                            eventJson.dateStart = formattedTime
+                            eventsList.push(eventJson)
+                        }
+                    }else if(stringSimilarity.compareTwoStrings(nameOfEvent, element.name.toLowerCase()) > teamNameThresholdSimilarity){
+                        //ho trovato l'evento che cerco. salvo i suoi dati
+                        eventJson.eventName = element.name
+                        eventJson.prizePool = element.prizePool
+                        eventJson.location = element.location
+                        //convert from unix to time and get local start time of match
+                        var date = new Date(element.dateStart);
+                        var hours = date.getHours();
+                        var minutes = "0" + date.getMinutes();
+                        var formattedTime = hours + ':' + minutes.substr(-2)
+                        eventJson.dateStart = formattedTime
+                        eventsList.push(eventJson)    
+                    }
+                });
+                    
+            }
+            //console.log(res)
+            return resolve (eventsList)
+        }).catch(console.error);
+    });
+}
+
 
 
 //get team ranking, gli elementi arrivano gia in ordine di punteggio 
@@ -304,4 +360,18 @@ async function main4(){
         console.log(element.team1 + " " + element.team1Result + " - " + element.team2Result + " " + element.team2 )
     });
 }
-main4()
+//main4()
+
+
+//recupera partite finite
+async function main5(){
+    try {
+        events = await getEvents(eventName);
+    } catch (error) {
+        console.log("Errore durante la ricerca degli eventi : " + error);
+    }
+    events.forEach(element => {
+        console.log(element.eventName + " " + element.location + " - " + element.prizePool + " " + element.dateStart )
+    });
+}
+main5()
